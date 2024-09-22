@@ -7,21 +7,46 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 #include <map>
+#include <vector>
 
 const char* ssid = "IoT";
 const char* password = "QAZwsxEDC@123";
 const char* serverName = "http://192.168.8.132:8080";
 
-const int SCAN_TIME = 5; // seconds
-const int SEND_INTERVAL = 30; // seconds
+const int SCAN_TIME = 15; // seconds
+const int SEND_INTERVAL = 15; // seconds
+
+class AdvertisedDeviceBarebone;
 
 BLEScan* pBLEScan;
-std::map<std::string, std::vector<BLEAdvertisedDevice>> blePackets;
+std::map<std::string, std::vector<AdvertisedDeviceBarebone>> blePackets;
+
+class AdvertisedDeviceBarebone {
+public:
+  AdvertisedDeviceBarebone(BLEAdvertisedDevice device) {
+    address = device.getAddress().toString();
+    rssi = device.getRSSI();
+  }
+
+  std::string getAddress() const {
+    return address;
+  }
+
+  int getRSSI() const {
+    return rssi;
+  }
+
+private:
+  std::string address;
+  int rssi;
+};
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-    // Add the advertised device to the map
-    blePackets[advertisedDevice.getAddress().toString()].push_back(advertisedDevice);
+    // Convert BLEAdvertisedDevice to AdvertisedDeviceBarebone
+    AdvertisedDeviceBarebone bareboneDevice(advertisedDevice);
+    // Add the barebone advertised device to the map
+    blePackets[bareboneDevice.getAddress()].push_back(bareboneDevice);
   }
 };
 
@@ -46,12 +71,12 @@ void wifiTask(void* pvParameters) {
 
     for (auto const& packet : blePackets) {
       std::string address = packet.first;
-      std::vector<BLEAdvertisedDevice> devices = packet.second;
+      std::vector<AdvertisedDeviceBarebone> devices = packet.second;
       int count = devices.size();
       int midRSSI = 0;
 
       for (auto const& device : devices) {
-        midRSSI += const_cast<BLEAdvertisedDevice&>(device).getRSSI();
+        midRSSI += device.getRSSI();
       }
       midRSSI /= count;
 
