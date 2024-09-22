@@ -25,14 +25,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   }
 };
 
-void scanCompleteCB(BLEScanResults scanResults) {
-  for (int i = 0; i < scanResults.getCount(); i++) {
-    BLEAdvertisedDevice device = scanResults.getDevice(i);
-    blePackets[device.getAddress().toString()].push_back(device);
-  }
-  pBLEScan->clearResults();
-}
-
 void wifiTask(void* pvParameters) {
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
