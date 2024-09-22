@@ -6,6 +6,7 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <map>
 
 const char* ssid = "IoT";
 const char* password = "QAZwsxEDC@123";
@@ -15,28 +16,20 @@ const int SCAN_TIME = 5; // seconds
 const int SEND_INTERVAL = 30; // seconds
 
 BLEScan* pBLEScan;
-int blePacketCount = 0;
+std::map<std::string, std::vector<BLEAdvertisedDevice>> blePackets;
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
-    // Increment the packet count for each received BLE packet
-    blePacketCount++;
-    
-    // Print the raw advertising data
-    uint8_t* payloadData = advertisedDevice.getPayload();
-    size_t payloadLength = advertisedDevice.getPayloadLength();
-    
-    Serial.print("Raw Advertising Data: ");
-    for (int i = 0; i < payloadLength; i++) {
-      Serial.printf("%02X ", payloadData[i]);
-    }
-    Serial.println();
+    // Add the advertised device to the map
+    blePackets[advertisedDevice.getAddress().toString()].push_back(advertisedDevice);
   }
 };
 
 void scanCompleteCB(BLEScanResults scanResults) {
-  blePacketCount += scanResults.getCount();
+  for (int i = 0; i < scanResults.getCount(); i++) {
+    BLEAdvertisedDevice device = scanResults.getDevice(i);
+    blePackets[device.getAddress().toString()].push_back(device);
+  }
   pBLEScan->clearResults();
 }
 
@@ -54,9 +47,29 @@ void wifiTask(void* pvParameters) {
     delay(SEND_INTERVAL * 1000);
 
     // Create a JSON object
-    StaticJsonDocument<200> doc;
+    JsonDocument doc;
     doc["mac"] = WiFi.macAddress();
-    doc["count"] = blePacketCount;
+    doc["count"] = 0;
+    JsonArray packetsArray = doc["packets"].to<JsonArray>();
+
+    for (auto const& packet : blePackets) {
+      std::string address = packet.first;
+      std::vector<BLEAdvertisedDevice> devices = packet.second;
+      int count = devices.size();
+      int midRSSI = 0;
+
+      for (auto const& device : devices) {
+        midRSSI += const_cast<BLEAdvertisedDevice&>(device).getRSSI();
+      }
+      midRSSI /= count;
+
+      JsonObject packetObj = packetsArray.add<JsonObject>();
+      packetObj["address"] = address;
+      packetObj["count"] = count;
+      packetObj["RSSI"] = midRSSI;
+
+      doc["count"] = doc["count"].as<int>() + count;
+    }
 
     // Serialize the JSON object to a string
     String jsonString;
@@ -78,8 +91,8 @@ void wifiTask(void* pvParameters) {
 
     http.end();
 
-    // Reset the packet count
-    blePacketCount = 0;
+    // Clear the BLE packets map
+    blePackets.clear();
   }
 }
 
