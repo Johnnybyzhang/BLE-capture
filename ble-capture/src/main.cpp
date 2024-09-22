@@ -11,10 +11,10 @@
 
 const char* ssid = "IoT";
 const char* password = "QAZwsxEDC@123";
-const char* serverName = "http://192.168.8.132:8080";
+const char* serverName = "http://192.168.8.132:8000/api/jsondata/";
 
-const int SCAN_TIME = 15; // seconds
-const int SEND_INTERVAL = 15; // seconds
+const int SCAN_TIME = 5; // seconds
+const int SEND_INTERVAL = 30; // seconds
 
 class AdvertisedDeviceBarebone;
 
@@ -64,10 +64,10 @@ void wifiTask(void* pvParameters) {
     delay(SEND_INTERVAL * 1000);
 
     // Create a JSON object
-    JsonDocument doc;
-    doc["mac"] = WiFi.macAddress();
-    doc["count"] = 0;
-    JsonArray packetsArray = doc["packets"].to<JsonArray>();
+    JsonDocument response;
+    response["mac"] = WiFi.macAddress();
+    response["count"] = 0;
+    JsonArray packetsArray = response["packets"].to<JsonArray>();
 
     for (auto const& packet : blePackets) {
       std::string address = packet.first;
@@ -75,6 +75,7 @@ void wifiTask(void* pvParameters) {
       int count = devices.size();
       int midRSSI = 0;
 
+      if (count > 1) {
       for (auto const& device : devices) {
         midRSSI += device.getRSSI();
       }
@@ -85,12 +86,13 @@ void wifiTask(void* pvParameters) {
       packetObj["count"] = count;
       packetObj["RSSI"] = midRSSI;
 
-      doc["count"] = doc["count"].as<int>() + count;
+      response["count"] = response["count"].as<int>() + count;
+      }
     }
 
     // Serialize the JSON object to a string
     String jsonString;
-    serializeJson(doc, jsonString);
+    serializeJson(response, jsonString);
 
     // Send HTTP POST request
     HTTPClient http;
@@ -120,7 +122,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     wifiTask,
     "WiFiTask",
-    10000,
+    60000,
     NULL,
     1,
     NULL,
