@@ -7,9 +7,9 @@
 #include "network_task.h"
 #include "wifi_task.cpp" // 包含 WiFiTask 类
 
-const char* ssid = "IoT";
-const char* password = "QAZwsxEDC@123";
-const char* serverName = "http://192.168.8.132:8000/api/jsondata/";
+const char* ssid = "DKU";
+const char* password = "Duk3blu3!";
+const char* serverName = "http://10.200.30.38:8001/api/jsondata/";
 const int SEND_INTERVAL = 30; // seconds
 BLEScan* pBLEScan;
 std::map<std::string, std::vector<AdvertisedDeviceBarebone>> blePackets;

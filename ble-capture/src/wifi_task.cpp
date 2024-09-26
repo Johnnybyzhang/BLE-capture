@@ -41,9 +41,12 @@ public:
             midRSSI += device.getRSSI();
           }
           midRSSI /= count;
-
+          if (midRSSI > -80)
+          {
+            continue;
+          }
+          
           JsonObject packetObj = packetsArray.add<JsonObject>();
-          packetObj["address"] = address;
           packetObj["count"] = count;
           packetObj["RSSI"] = midRSSI;
 
